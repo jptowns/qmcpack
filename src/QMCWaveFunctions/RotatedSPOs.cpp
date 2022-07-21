@@ -31,7 +31,7 @@ RotatedSPOs::RotatedSPOs(std::unique_ptr<SPOSet>&& spos)
 RotatedSPOs::~RotatedSPOs() {}
 
 
-void RotatedSPOs::setRotationParameters(const std::vector<RealType>& param_list)
+void RotatedSPOs::setRotationParameters(const std::vector<ValueType>& param_list)
 {
   params          = param_list;
   params_supplied = true;
@@ -110,7 +110,7 @@ void RotatedSPOs::buildOptVariables(const std::vector<std::pair<int, int>>& rota
     myVars.print(app_log());
   }
 
-  std::vector<RealType> param(m_act_rot_inds.size());
+  std::vector<ValueType> param(m_act_rot_inds.size());
   for (int i = 0; i < m_act_rot_inds.size(); i++)
     param[i] = myVars[i];
   apply_rotation(param, false);
@@ -127,7 +127,7 @@ void RotatedSPOs::buildOptVariables(const std::vector<std::pair<int, int>>& rota
 #endif
 }
 
-void RotatedSPOs::apply_rotation(const std::vector<RealType>& param, bool use_stored_copy)
+void RotatedSPOs::apply_rotation(const std::vector<ValueType>& param, bool use_stored_copy)
 {
   assert(param.size() == m_act_rot_inds.size());
 
@@ -140,7 +140,7 @@ void RotatedSPOs::apply_rotation(const std::vector<RealType>& param, bool use_st
   {
     const int p      = m_act_rot_inds[i].first;
     const int q      = m_act_rot_inds[i].second;
-    const RealType x = param[i];
+    const ValueType x = param[i];
 
     rot_mat[q][p] = x;
     rot_mat[p][q] = -x;

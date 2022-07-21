@@ -30,7 +30,7 @@ public:
   std::vector<std::pair<int, int>> m_act_rot_inds;
 
   //function to perform orbital rotations
-  void apply_rotation(const std::vector<RealType>& param, bool use_stored_copy);
+  void apply_rotation(const std::vector<ValueType>& param, bool use_stored_copy);
 
   //helper function to apply_rotation
   void exponentiate_antisym_matrix(ValueMatrix& mat);
@@ -39,7 +39,7 @@ public:
   std::unique_ptr<SPOSet> Phi;
 
   /// Set the rotation parameters (usually from input file)
-  void setRotationParameters(const std::vector<RealType>& param_list);
+  void setRotationParameters(const std::vector<ValueType>& param_list);
 
   /// the number of electrons of the majority spin
   size_t nel_major_;
@@ -190,11 +190,11 @@ public:
   {
     if (Optimizable)
     {
-      std::vector<RealType> param(m_act_rot_inds.size());
+      std::vector<ValueType> param(m_act_rot_inds.size());
       for (int i = 0; i < m_act_rot_inds.size(); i++)
       {
         int loc  = myVars.where(i);
-        param[i] = myVars[i] = active[loc];
+        param[i] = myVars[i] = active[loc];   // JPT 2022-06-22: WTF is this?
       }
       apply_rotation(param, true);
     }
@@ -309,7 +309,7 @@ private:
   /// true if SPO parameters (orbital rotation parameters) have been supplied by input
   bool params_supplied;
   /// list of supplied orbital rotation parameters
-  std::vector<RealType> params;
+  std::vector<ValueType> params;
 };
 
 } //namespace qmcplusplus

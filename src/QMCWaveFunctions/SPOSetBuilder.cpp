@@ -16,9 +16,10 @@
 #include "OhmmsData/AttributeSet.h"
 #include <Message/UniformCommunicateError.h>
 
-#if !defined(QMC_COMPLEX)
+// JPT 2022-06-22: Remove for final commit
+//#if !defined(QMC_COMPLEX)
 #include "QMCWaveFunctions/RotatedSPOs.h"
-#endif
+//#endif
 
 namespace qmcplusplus
 {
@@ -91,6 +92,8 @@ std::unique_ptr<SPOSet> SPOSetBuilder::createSPOSet(xmlNodePtr cur)
 
   if (optimize == "rotation" || optimize == "yes")
   {
+    // JPT 2022-06-22: Remove for final commit
+    /*
 #ifdef QMC_COMPLEX
     app_error() << "Orbital optimization via rotation doesn't support complex wavefunction yet.\n";
     abort();
@@ -123,6 +126,54 @@ std::unique_ptr<SPOSet> SPOSetBuilder::createSPOSet(xmlNodePtr cur)
     // overwrite sposet
     sposet = std::move(rot_spo);
 #endif
+    */
+    
+    // create sposet with rotation
+    auto& sposet_ref = *sposet;
+    auto rot_spo     = std::make_unique<RotatedSPOs>(std::move(sposet));
+    xmlNodePtr tcur  = cur->xmlChildrenNode;
+    while (tcur != NULL)
+    {
+      std::string cname((const char*)(tcur->name));
+      // Read the rotation coefficients from xml.
+      if (cname == "opt_vars")
+      {
+	// If complex, then for a given rotation, we expect 2x
+	// the values. E.g.: "z1.real z1.imag ... zN.real zN.imag"
+	if ( typeid(ValueType) == typeid(std::complex<RealType>) )
+	  {
+	    std::vector<RealType> temp_params; // Real valued elements
+	    putContent(temp_params, tcur);     // Now a vector with all the coefs
+	    std::vector<ValueType> params;     // complex valued elements
+	    for ( int i=0; i<params.size(); i++ )
+	      {
+		const auto idx = 2*i;
+		params[i].real(temp_params[idx]);
+		params[i].imag(temp_params[idx+1]);
+	      }
+	    rot_spo->setRotationParameters(params);
+	  }
+	else  // Real case
+	  {
+	    std::vector<ValueType> params;
+	    putContent(params, tcur);
+	    rot_spo->setRotationParameters(params);
+	  }	
+      }
+      tcur = tcur->next;
+    }
+
+    // pass sposet name and rename sposet before rotation
+    if (!sposet_ref.getName().empty())
+    {
+      rot_spo->setName(sposet_ref.getName());
+      sposet_ref.setName(sposet_ref.getName() + "_before_rotation");
+    }
+    if (sposet_ref.getName().empty())
+      sposet_ref.setName(spo_object_name + "_before_rotation");
+
+    // overwrite sposet
+    sposet = std::move(rot_spo);
   }
 
   if (!spo_object_name.empty() && sposet->getName().empty())
