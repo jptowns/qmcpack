@@ -27,7 +27,7 @@ RotatedSPOs::RotatedSPOs(const std::string& my_name, std::unique_ptr<SPOSet>&& s
 RotatedSPOs::~RotatedSPOs() {}
 
 
-void RotatedSPOs::setRotationParameters(const std::vector<RealType>& param_list)
+void RotatedSPOs::setRotationParameters(const std::vector<ValueType>& param_list)
 {
   params          = param_list;
   params_supplied = true;
@@ -51,10 +51,18 @@ void RotatedSPOs::constructAntiSymmetricMatrix(const RotationIndices& rot_indice
   {
     const int p      = rot_indices[i].first;
     const int q      = rot_indices[i].second;
-    const RealType x = param[i];
+    const ValueType x = param[i];
 
+    // Real case
+    #if !defined(QMC_COMPLEX)
     rot_mat[q][p] = x;
     rot_mat[p][q] = -x;
+    #endif
+    // Complex case
+    #if defined(QMC_COMPLEX)
+    rot_mat[q][p] = x;
+    rot_mat[p][q] = std::conj(x);
+    #endif
   }
 }
 
@@ -73,9 +81,10 @@ void RotatedSPOs::extractParamsFromAntiSymmetricMatrix(const RotationIndices& ro
   }
 }
 
+  // JPT: 03.02.2023 Removed guardrails for QMC_COMPLEX in order to test complex OO
 void RotatedSPOs::buildOptVariables(const size_t nel)
 {
-#if !defined(QMC_COMPLEX)
+  //#if !defined(QMC_COMPLEX)
   /* Only rebuild optimized variables if more after-rotation orbitals are needed
    * Consider ROHF, there is only one set of SPO for both spin up and down Nup > Ndown.
    * nel_major_ will be set Nup.
@@ -96,12 +105,14 @@ void RotatedSPOs::buildOptVariables(const size_t nel)
 
     buildOptVariables(created_m_act_rot_inds);
   }
-#endif
+  //#endif
 }
 
+
+  // JPT: 03.02.2023 Removed guardrails for QMC_COMPLEX in order to test complex OO
 void RotatedSPOs::buildOptVariables(const RotationIndices& rotations)
 {
-#if !defined(QMC_COMPLEX)
+  //#if !defined(QMC_COMPLEX)
   const size_t nmo = Phi->getOrbitalSetSize();
 
   // create active rotations
@@ -150,10 +161,12 @@ void RotatedSPOs::buildOptVariables(const RotationIndices& rotations)
   for (int i = 0; i < m_act_rot_inds.size(); i++)
     param[i] = myVars[i];
   apply_rotation(param, false);
-#endif
+  //#endif
 }
 
-void RotatedSPOs::apply_rotation(const std::vector<RealType>& param, bool use_stored_copy)
+  // JPT: 03.02.2023 Change RealType -> ValueType
+
+void RotatedSPOs::apply_rotation(const std::vector<ValueType>& param, bool use_stored_copy)
 {
   assert(param.size() == m_act_rot_inds.size());
 
@@ -161,8 +174,35 @@ void RotatedSPOs::apply_rotation(const std::vector<RealType>& param, bool use_st
   ValueMatrix rot_mat(nmo, nmo);
   rot_mat = ValueType(0);
 
+  // JPT debug: check that the matrix is antisymmetric
+  std::cerr << "JPT DEBUG: rot_mat BEFORE constructAntiSymmetricMatrix= \n";
+  std::cerr << std::fixed;
+  for ( int i=0; i<rot_mat.size1(); i++ )
+    {
+      for ( int j=0; j<rot_mat.size1(); j++ )
+	{
+	  std::cerr << " " << std::setw(10) << std::set_precision(5) << rot_mat[i][j];
+	}
+      std::cerr << "\n";
+    }
+  // end debug
+
   constructAntiSymmetricMatrix(m_act_rot_inds, param, rot_mat);
 
+  // JPT debug: check that the matrix is antisymmetric
+  std::cerr << "JPT DEBUG: rot_mat AFTER constructAntiSymmetricMatrix= \n";
+  std::cerr << std::fixed;
+  for ( int i=0; i<rot_mat.size1(); i++ )
+    {
+      for ( int j=0; j<rot_mat.size1(); j++ )
+	{
+	  std::cerr << " " << std::setw(10) << std::set_precision(5) << rot_mat[i][j];
+	}
+      std::cerr << "\n";
+    }
+  // end debug
+
+  
   /*
     rot_mat is now an anti-hermitian matrix. Now we convert
     it into a unitary matrix via rot_mat = exp(-rot_mat). 

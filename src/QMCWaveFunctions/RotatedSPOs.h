@@ -56,7 +56,7 @@ public:
                                                    std::vector<ValueType>& param);
 
   //function to perform orbital rotations
-  void apply_rotation(const std::vector<RealType>& param, bool use_stored_copy);
+  void apply_rotation(const std::vector<ValueType>& param, bool use_stored_copy);
 
   // Compute matrix exponential of an antisymmetric matrix (result is rotation matrix)
   static void exponentiate_antisym_matrix(ValueMatrix& mat);
@@ -68,7 +68,7 @@ public:
   std::unique_ptr<SPOSet> Phi;
 
   /// Set the rotation parameters (usually from input file)
-  void setRotationParameters(const std::vector<RealType>& param_list);
+  void setRotationParameters(const std::vector<ValueType>& param_list);
 
   /// the number of electrons of the majority spin
   size_t nel_major_;
@@ -217,11 +217,12 @@ public:
   ///reset
   void resetParametersExclusive(const opt_variables_type& active) override
   {
-    std::vector<RealType> param(m_act_rot_inds.size());
+    //std::vector<RealType> param(m_act_rot_inds.size()); // JPT: 03.02.2023 Error if QMC_COMPLEX
+    std::vector<ValueType> param(m_act_rot_inds.size());
     for (int i = 0; i < m_act_rot_inds.size(); i++)
     {
       int loc  = myVars.where(i);
-      param[i] = myVars[i] = active[loc];
+      param[i] = myVars[i] = active[loc];  // Error here if ValueType = std::complex<double>
     }
     apply_rotation(param, true);
   }
@@ -344,7 +345,7 @@ private:
   /// true if SPO parameters (orbital rotation parameters) have been supplied by input
   bool params_supplied;
   /// list of supplied orbital rotation parameters
-  std::vector<RealType> params;
+  std::vector<ValueType> params;
 };
 
 } //namespace qmcplusplus

@@ -16,9 +16,10 @@
 #include "OhmmsData/AttributeSet.h"
 #include <Message/UniformCommunicateError.h>
 
-#if !defined(QMC_COMPLEX)
+// JPT: 03.02.2023 Remove QMC_COMPLEX to enable complex OO tests
+//#if !defined(QMC_COMPLEX)
 #include "QMCWaveFunctions/RotatedSPOs.h"
-#endif
+//#endif
 
 namespace qmcplusplus
 {
@@ -91,9 +92,11 @@ std::unique_ptr<SPOSet> SPOSetBuilder::createSPOSet(xmlNodePtr cur)
 
   if (optimize == "rotation" || optimize == "yes")
   {
+    // JPT: 03.02.2023 Removed to enable complex orbopt
 #ifdef QMC_COMPLEX
-    app_error() << "Orbital optimization via rotation doesn't support complex wavefunction yet.\n";
-    abort();
+    app_log() << "!!! WARNING: Complex OrbOpt is an experimental feature not fully tested !!!";  
+    //app_error() << "Orbital optimization via rotation doesn't support complex wavefunction yet.\n";
+    //abort();
 #else
     // create sposet with rotation
     auto& sposet_ref = *sposet;
