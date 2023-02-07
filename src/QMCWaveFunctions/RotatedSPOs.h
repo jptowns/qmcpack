@@ -212,7 +212,7 @@ public:
     Phi->storeParamsBeforeRotation();
   }
 
-  void checkOutVariables(const opt_variables_type& active) override { myVars.getIndex(active); }
+  void checkOutVariables(const opt_variables_type& active) override { std::cerr << "JPT TEST RotatedSPOs::checkOutVariables()\n"; myVars.getIndex(active); }
 
   ///reset
   void resetParametersExclusive(const opt_variables_type& active) override

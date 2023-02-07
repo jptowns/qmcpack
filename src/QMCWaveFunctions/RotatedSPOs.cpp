@@ -84,7 +84,6 @@ void RotatedSPOs::extractParamsFromAntiSymmetricMatrix(const RotationIndices& ro
   // JPT: 03.02.2023 Removed guardrails for QMC_COMPLEX in order to test complex OO
 void RotatedSPOs::buildOptVariables(const size_t nel)
 {
-  //#if !defined(QMC_COMPLEX)
   /* Only rebuild optimized variables if more after-rotation orbitals are needed
    * Consider ROHF, there is only one set of SPO for both spin up and down Nup > Ndown.
    * nel_major_ will be set Nup.
@@ -105,19 +104,17 @@ void RotatedSPOs::buildOptVariables(const size_t nel)
 
     buildOptVariables(created_m_act_rot_inds);
   }
-  //#endif
 }
 
 
   // JPT: 03.02.2023 Removed guardrails for QMC_COMPLEX in order to test complex OO
 void RotatedSPOs::buildOptVariables(const RotationIndices& rotations)
 {
-  //#if !defined(QMC_COMPLEX)
   const size_t nmo = Phi->getOrbitalSetSize();
 
   // create active rotations
   m_act_rot_inds = rotations;
-
+  
   // This will add the orbital rotation parameters to myVars
   // and will also read in initial parameter values supplied in input file
   int p, q;
@@ -157,11 +154,10 @@ void RotatedSPOs::buildOptVariables(const RotationIndices& rotations)
     myVars.print(app_log());
   }
 
-  std::vector<RealType> param(m_act_rot_inds.size());
+  std::vector<ValueType> param(m_act_rot_inds.size());  // JPT DEBUG: Changed RealType -> ValueType
   for (int i = 0; i < m_act_rot_inds.size(); i++)
     param[i] = myVars[i];
   apply_rotation(param, false);
-  //#endif
 }
 
   // JPT: 03.02.2023 Change RealType -> ValueType
@@ -181,7 +177,7 @@ void RotatedSPOs::apply_rotation(const std::vector<ValueType>& param, bool use_s
     {
       for ( int j=0; j<rot_mat.size1(); j++ )
 	{
-	  std::cerr << " " << std::setw(10) << std::set_precision(5) << rot_mat[i][j];
+	  std::cerr << " " << std::setw(10) << std::setprecision(5) << rot_mat[i][j];
 	}
       std::cerr << "\n";
     }
@@ -196,7 +192,7 @@ void RotatedSPOs::apply_rotation(const std::vector<ValueType>& param, bool use_s
     {
       for ( int j=0; j<rot_mat.size1(); j++ )
 	{
-	  std::cerr << " " << std::setw(10) << std::set_precision(5) << rot_mat[i][j];
+	  std::cerr << " " << std::setw(10) << std::setprecision(5) << rot_mat[i][j];
 	}
       std::cerr << "\n";
     }
@@ -227,14 +223,15 @@ void RotatedSPOs::exponentiate_antisym_matrix(ValueMatrix& mat)
   // i(-iX) = X, so -iX is hermitian
   // diagonalize -iX = UDU^T, exponentiate e^iD, and return U e^iD U^T
   // construct hermitian analogue of mat by multiplying by -i
-  for (int i = 0; i < n; ++i)
-  {
-    for (int j = i; j < n; ++j)
+  for (int i = 0; i < n; ++i)  // JPT DEBUG: [05.02.2023] Problem here if QMC_COMPLEX
     {
-      mat_h[i + n * j] = std::complex<RealType>(0, -1.0 * mat[j][i]);
-      mat_h[j + n * i] = std::complex<RealType>(0, 1.0 * mat[j][i]);
+      for (int j = i; j < n; ++j)
+        {
+          mat_h[i + n * j] = std::complex<RealType>(0, -1.0 * mat[j][i]);
+          mat_h[j + n * i] = std::complex<RealType>(0, 1.0 * mat[j][i]);
+        }
     }
-  }
+
   // diagonalize the matrix
   char JOBZ('V');
   char UPLO('U');
@@ -1272,6 +1269,12 @@ void RotatedSPOs::table_method_evalWF(Vector<ValueType>& dlogpsi,
     }
   }
 
+  // JPT DEBUG: Looks like when I added RotatedSPOs to the WFBASE_SRCS we inherited a
+  // bunch of BLAS incompatibility problems. So we need to double check the interfaces
+  // below and change accordingly...
+  // Possibly, we'll need to separate out a special case ifdef QMC_COMPLEX...
+  // Types
+  // T = 
   BLAS::gemm('N', 'N', nmo, nmo, nel, RealType(1.0), T, nmo, pK4.data(), nel, RealType(0.0), K4T.data(), nmo);
   BLAS::gemm('N', 'N', nmo, nel, nmo, RealType(1.0), K4T.data(), nmo, T, nmo, RealType(0.0), TK4T.data(), nmo);
 

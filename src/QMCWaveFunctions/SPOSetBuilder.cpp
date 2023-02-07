@@ -18,8 +18,9 @@
 
 // JPT: 03.02.2023 Remove QMC_COMPLEX to enable complex OO tests
 //#if !defined(QMC_COMPLEX)
-#include "QMCWaveFunctions/RotatedSPOs.h"
+//#include "QMCWaveFunctions/RotatedSPOs.h"
 //#endif
+#include "QMCWaveFunctions/RotatedSPOs.h"
 
 namespace qmcplusplus
 {
@@ -93,11 +94,8 @@ std::unique_ptr<SPOSet> SPOSetBuilder::createSPOSet(xmlNodePtr cur)
   if (optimize == "rotation" || optimize == "yes")
   {
     // JPT: 03.02.2023 Removed to enable complex orbopt
-#ifdef QMC_COMPLEX
     app_log() << "!!! WARNING: Complex OrbOpt is an experimental feature not fully tested !!!";  
-    //app_error() << "Orbital optimization via rotation doesn't support complex wavefunction yet.\n";
-    //abort();
-#else
+    
     // create sposet with rotation
     auto& sposet_ref = *sposet;
     app_log() << "  SPOSet " << sposet_ref.getName() << " is optimizable\n";
@@ -105,20 +103,23 @@ std::unique_ptr<SPOSet> SPOSetBuilder::createSPOSet(xmlNodePtr cur)
       myComm->barrier_and_abort("Orbital rotation not supported with '" + sposet_ref.getName() + "' of type '" +
                                 sposet_ref.getClassName() + "'.");
     auto rot_spo    = std::make_unique<RotatedSPOs>(sposet_ref.getName(), std::move(sposet));
+    std::cerr << "JPT DEBUG: Made a RotatedSPOs object!\n";
+    std::cerr << "JPT DEBUG: Name of rot_spo= " << typeid(rot_spo).name() << "\n";
     xmlNodePtr tcur = cur->xmlChildrenNode;
     while (tcur != NULL)
-    {
-      std::string cname((const char*)(tcur->name));
-      if (cname == "opt_vars")
       {
-        std::vector<RealType> params;
-        putContent(params, tcur);
-        rot_spo->setRotationParameters(params);
+        std::string cname((const char*)(tcur->name));
+        std::cerr << "JPT DEBUG: Now parsing xml node: " << cname << "...\n";
+        if (cname == "opt_vars")
+          {
+            std::cerr << "JPT DEBUG: Will read in some 'opt_vars'...\n";
+            std::vector<ValueType> params;  // JPT DEBUG: Changed RealType -> ValueType
+            putContent(params, tcur);
+            rot_spo->setRotationParameters(params);  // JPT DEBUG: undefined reference
+          }
+        tcur = tcur->next;
       }
-      tcur = tcur->next;
-    }
     sposet = std::move(rot_spo);
-#endif
   }
 
   if (sposet->getName().empty())
