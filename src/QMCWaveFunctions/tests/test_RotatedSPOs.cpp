@@ -116,28 +116,40 @@ TEST_CASE("RotatedSPOs_complex_params_jpt", "[wavefunction]")
 
   // 3.) Make up some params
   size_t n_rot_params = (orbitalsetsize - elec_.R.size())*elec_.R.size();
-  std::vector<ComplexType> zparams(n_rot_params);
   // explicitly construct an 'opt_variables_type' here
   opt_variables_type kappa_list;
-  for ( int i=0; i<zparams.size(); i++ )
-    {
-      zparams[i] = std::polar(1.0, 2*3.14159265*i/(n_rot_params-1));
-      int prepend = 2-std::to_string(i).size();
-      std::string s = std::string(prepend, '0').append(std::to_string(i));
-      kappa_list.insert("kappa_" + s + ".real", zparams[i].real());
-      kappa_list.insert("kappa_" + s + ".imag", zparams[i].imag());
-    }
+
   // test printout
   std::cerr << "\nBEFORE touching rot_spos...\n";
   kappa_list.print(std::cerr, 4, true);
   std::cerr << "TEST kappa_list.num_active_vars = " << kappa_list.size_of_active() << "\n";
   
-  // 4.) Pass in the parameters
+  // 4.) Read in the rot_spo params into kappa_list
   rot_spo->checkInVariablesExclusive(kappa_list);
   std::cerr << "\nAFTER rot_spos->checkInVariablesExclusive()...\n";
   kappa_list.print(std::cerr, 4, true);
   std::cerr << "TEST kappa_list.num_active_vars = " << kappa_list.size_of_active() << "\n";
+  kappa_list.resetIndex(); // this updates the (internally stored) number of params
+  std::cerr << "TEST kappa_list.num_active_vars = " << kappa_list.size_of_active() << "\n";
+    
+  // 5.) Update the parameters
+  /*
+  for ( int i=0; i<n_rot_params; i++ )
+    {
+      ComplexType z = std::polar(1.0, 2*3.14159265*i/(n_rot_params-1));
+      int prepend = 2-std::to_string(i).size();
+      std::string s = std::string(prepend, '0').append(std::to_string(i));
+      auto name = kappa_list
+      kappa_list.insert("kappa_" + s + ".real", z.real());
+      kappa_list.insert("kappa_" + s + ".imag", z.imag());
+    }
+  */
+  for ( int n=0; n<kappa_list.size(); n++ )
+    {
+      kappa_list[n] = static_cast<RealType>(n);
+    }
 
+  // 6.) Update the rot_spos params via kappa_list
   rot_spo->checkOutVariables(kappa_list);
   std::cerr << "\nAFTER rot_spos->checkOutVariables()...\n";
   kappa_list.print(std::cerr, 4, true);
