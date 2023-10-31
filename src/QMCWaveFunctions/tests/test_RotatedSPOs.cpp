@@ -33,6 +33,121 @@ using std::string;
 namespace qmcplusplus
 {
 /*
+  JPT 31.10.2023: Sandbox for complex params. Can't remove QMC_COMPLEX guards just yet due to infinity compiler errors.
+*/
+TEST_CASE("RotatedSPOs_complex_params_jpt", "[wavefunction]")
+{
+  std::cerr << "JPT BEGIN Complex Rotation Sandbox...\n";
+  using RealType = QMCTraits::RealType;
+  using ComplexType = std::complex<RealType>;  // should be using ValueType, but at time of writing, QMC_COMPLEX=0, so can't use ValueType directly
+  
+  
+  /*
+    BEGIN Boilerplate stuff to make a simple SPOSet. Copied from test_einset.cpp
+  */
+
+  Communicate* c = OHMMS::Controller;
+
+  // We get a "Mismatched supercell lattices" error due to default ctor?
+  ParticleSet::ParticleLayout lattice;
+
+  // diamondC_1x1x1
+  lattice.R = {3.37316115, 3.37316115, 0.0, 0.0, 3.37316115, 3.37316115, 3.37316115, 0.0, 3.37316115};
+
+  ParticleSetPool ptcl = ParticleSetPool(c);
+  ptcl.setSimulationCell(lattice);
+  // LAttice seems fine after this point...
+
+  auto ions_uptr = std::make_unique<ParticleSet>(ptcl.getSimulationCell());
+  auto elec_uptr = std::make_unique<ParticleSet>(ptcl.getSimulationCell());
+  ParticleSet& ions_(*ions_uptr);
+  ParticleSet& elec_(*elec_uptr);
+
+  ions_.setName("ion");
+  ptcl.addParticleSet(std::move(ions_uptr));
+  ions_.create({2});
+  ions_.R[0] = {0.0, 0.0, 0.0};
+  ions_.R[1] = {1.68658058, 1.68658058, 1.68658058};
+  elec_.setName("elec");
+  ptcl.addParticleSet(std::move(elec_uptr));
+  elec_.create({2});
+  elec_.R[0]                 = {0.0, 0.0, 0.0};
+  elec_.R[1]                 = {0.0, 1.0, 0.0};
+  SpeciesSet& tspecies       = elec_.getSpeciesSet();
+  int upIdx                  = tspecies.addSpecies("u");
+  int chargeIdx              = tspecies.addAttribute("charge");
+  tspecies(chargeIdx, upIdx) = -1;
+
+  //diamondC_1x1x1 - 8 bands available, use 
+  const char* particles = R"(<tmp>
+<determinantset type="einspline" href="diamondC_2x1x1.pwscf.h5" tilematrix="1 0 0 0 1 0 0 0 1" twistnum="0" source="ion" meshfactor="0.5" precision="float" size="8"/>
+</tmp>
+)";
+
+  Libxml2Document doc;
+  bool okay = doc.parseFromString(particles);
+  REQUIRE(okay);
+
+  xmlNodePtr root = doc.getRoot();
+
+  xmlNodePtr ein1 = xmlFirstElementChild(root);
+
+  EinsplineSetBuilder einSet(elec_, ptcl.getPool(), c, ein1);
+  auto spo = einSet.createSPOSetFromXML(ein1);
+  REQUIRE(spo);
+
+  /*
+    END Boilerplate stuff. Now we have a SplineR2R wavefunction 
+    ready for rotation. What follows is the actual test.
+  */
+
+  // SplineR2R only for the moment, so skip if QMC_COMPLEX is set
+#if !defined(QMC_COMPLEX)
+  spo->storeParamsBeforeRotation();
+  // 1.) Make a RotatedSPOs object so that we can use the rotation routines
+  auto rot_spo = std::make_unique<RotatedSPOs>("one_rotated_set", std::move(spo));
+
+  // Sanity check for orbs. Expect 2 electrons, 8 orbitals.
+  const auto orbitalsetsize = rot_spo->getOrbitalSetSize();
+  REQUIRE(orbitalsetsize == 8);
+
+  // 2.) Get data for unrotated orbitals. Check that there's no rotation
+  rot_spo->buildOptVariables(elec_.R.size());
+
+  // 3.) Make up some params
+  size_t n_rot_params = (orbitalsetsize - elec_.R.size())*elec_.R.size();
+  std::vector<ComplexType> zparams(n_rot_params);
+  // explicitly construct an 'opt_variables_type' here
+  opt_variables_type kappa_list;
+  for ( int i=0; i<zparams.size(); i++ )
+    {
+      zparams[i] = std::polar(1.0, 2*3.14159265*i/(n_rot_params-1));
+      int prepend = 2-std::to_string(i).size();
+      std::string s = std::string(prepend, '0').append(std::to_string(i));
+      kappa_list.insert("kappa_" + s + ".real", zparams[i].real());
+      kappa_list.insert("kappa_" + s + ".imag", zparams[i].imag());
+    }
+  // test printout
+  std::cerr << "\nBEFORE touching rot_spos...\n";
+  kappa_list.print(std::cerr, 4, true);
+  std::cerr << "TEST kappa_list.num_active_vars = " << kappa_list.size_of_active() << "\n";
+  
+  // 4.) Pass in the parameters
+  rot_spo->checkInVariablesExclusive(kappa_list);
+  std::cerr << "\nAFTER rot_spos->checkInVariablesExclusive()...\n";
+  kappa_list.print(std::cerr, 4, true);
+  std::cerr << "TEST kappa_list.num_active_vars = " << kappa_list.size_of_active() << "\n";
+
+  rot_spo->checkOutVariables(kappa_list);
+  std::cerr << "\nAFTER rot_spos->checkOutVariables()...\n";
+  kappa_list.print(std::cerr, 4, true);
+  std::cerr << "TEST kappa_list.num_active_vars = " << kappa_list.size_of_active() << "\n";
+  
+#endif
+  std::cerr << "JPT END Complex Rotation Sandbox...\n";
+}
+
+/*
   JPT 04.01.2022: Adapted from test_einset.cpp
   Test the spline rotated machinery for SplineR2R (extend to others later).
 */
