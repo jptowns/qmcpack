@@ -105,14 +105,18 @@ TEST_CASE("RotatedSPOs_complex_params_jpt", "[wavefunction]")
 #if !defined(QMC_COMPLEX)
   spo->storeParamsBeforeRotation();
   // 1.) Make a RotatedSPOs object so that we can use the rotation routines
+  std::cerr << "JPT: Before rot_spo created...\n";
   auto rot_spo = std::make_unique<RotatedSPOs>("one_rotated_set", std::move(spo));
-
+  std::cerr << "JPT: After rot_spo created...\n";
+  
   // Sanity check for orbs. Expect 2 electrons, 8 orbitals.
   const auto orbitalsetsize = rot_spo->getOrbitalSetSize();
   REQUIRE(orbitalsetsize == 8);
 
   // 2.) Get data for unrotated orbitals. Check that there's no rotation
+  std::cerr << "JPT: Before rot_spo->buildOptVariables()...\n";
   rot_spo->buildOptVariables(elec_.R.size());
+  std::cerr << "JPT: After rot_spo->buildOptVariables()...\n";
 
   // 3.) Make up some params
   size_t n_rot_params = (orbitalsetsize - elec_.R.size())*elec_.R.size();

@@ -286,31 +286,60 @@ void RotatedSPOs::readVariationalParameters(hdf_archive& hin)
 
 void RotatedSPOs::buildOptVariables(const size_t nel)
 {
+  if constexpr ( std::is_same_v<std::complex<RealType>, ValueType> )
+		 {
+		   /*
+		     Case: ValueType is complex, so there are 2x as many parameters as
+		     there are elements of the kappa matrix because we are storing
+		     the real and imag components as two separate real values
+		    */
+		   std::cerr << "JPT: Inside RotatedSPOS::buildOptVariables() and i am complex!\n";
+		   if (nel > nel_major_ && myVars.size() == 0)
+		     {
+		       nel_major_ = nel;
+		       
+		       const size_t nmo = Phi->getOrbitalSetSize();
+		       
+		       // create active rotation parameter indices
+		       RotationIndices created_m_act_rot_inds;
+		       RotationIndices created_full_rot_inds;
+		       if (use_global_rot_)
+			 createRotationIndicesFull(nel, nmo, created_full_rot_inds);
+		       
+		       createRotationIndices(nel, nmo, created_m_act_rot_inds);
+		       
+		       buildOptVariables(created_m_act_rot_inds, created_full_rot_inds);
+		     }
+		 }
+  else
+    {
+      std::cerr << "JPT: Inside RotatedSPOS::buildOptVariables() and i am real!\n";
 #if !defined(QMC_COMPLEX)
-  /* Only rebuild optimized variables if more after-rotation orbitals are needed
-   * Consider ROHF, there is only one set of SPO for both spin up and down Nup > Ndown.
-   * nel_major_ will be set Nup.
-   *
-   * Use the size of myVars as a flag to avoid building the rotation parameters again
-   * when a clone is made (the DiracDeterminant constructor calls buildOptVariables)
-   */
-  if (nel > nel_major_ && myVars.size() == 0)
-  {
-    nel_major_ = nel;
-
-    const size_t nmo = Phi->getOrbitalSetSize();
-
-    // create active rotation parameter indices
-    RotationIndices created_m_act_rot_inds;
-
-    RotationIndices created_full_rot_inds;
-    if (use_global_rot_)
-      createRotationIndicesFull(nel, nmo, created_full_rot_inds);
-
-    createRotationIndices(nel, nmo, created_m_act_rot_inds);
-
-    buildOptVariables(created_m_act_rot_inds, created_full_rot_inds);
-  }
+      /* Only rebuild optimized variables if more after-rotation orbitals are needed
+       * Consider ROHF, there is only one set of SPO for both spin up and down Nup > Ndown.
+       * nel_major_ will be set Nup.
+       *
+       * Use the size of myVars as a flag to avoid building the rotation parameters again
+       * when a clone is made (the DiracDeterminant constructor calls buildOptVariables)
+       */
+      if (nel > nel_major_ && myVars.size() == 0)
+	{
+	  nel_major_ = nel;
+	  
+	  const size_t nmo = Phi->getOrbitalSetSize();
+	  
+	  // create active rotation parameter indices
+	  RotationIndices created_m_act_rot_inds;
+	  
+	  RotationIndices created_full_rot_inds;
+	  if (use_global_rot_)
+	    createRotationIndicesFull(nel, nmo, created_full_rot_inds);
+	  
+	  createRotationIndices(nel, nmo, created_m_act_rot_inds);
+	  
+	  buildOptVariables(created_m_act_rot_inds, created_full_rot_inds);
+	}
+    }
 #endif
 }
 
