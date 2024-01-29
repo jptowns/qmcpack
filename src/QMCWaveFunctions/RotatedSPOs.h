@@ -452,8 +452,9 @@ private:
   /// Full set of rotation matrix parameters for use in global rotation method
   std::vector<ValueType> myVarsFull_;
 
-  /// timer for apply_rotation
+  /// timers for expected heavy operations
   NewTimer& apply_rotation_timer_;
+  NewTimer& evaluatederivs_timer_;
 
   /// List of previously applied parameters
   std::vector<std::vector<ValueType>> history_params_;

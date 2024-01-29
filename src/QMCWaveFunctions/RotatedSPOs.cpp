@@ -26,6 +26,7 @@ RotatedSPOs::RotatedSPOs(const std::string& my_name, std::unique_ptr<SPOSet>&& s
       nel_major_(0),
       params_supplied_(false),
       apply_rotation_timer_(createGlobalTimer("RotatedSPOs::apply_rotation", timer_level_fine))
+      evaluatederivs_timer_(createGlobalTimer("RotatedSPOs::evaluateDerivatives", timer_level_fine))
 {
   OrbitalSetSize = Phi_->getOrbitalSetSize();
 }
@@ -774,6 +775,8 @@ void RotatedSPOs::evaluateDerivatives(ParticleSet& P,
                                       const int& FirstIndex,
                                       const int& LastIndex)
 {
+  ScopedTimer local(evaluatederivs_timer_);
+
   const size_t nel = LastIndex - FirstIndex;
   const size_t nmo = Phi_->getOrbitalSetSize();
 
@@ -913,6 +916,7 @@ void RotatedSPOs::evaluateDerivatives(ParticleSet& P,
                                       const std::vector<std::vector<int>>& lookup_tbl)
 {
 #ifndef QMC_COMPLEX
+  ScopedTimer local(evaluatederivs_timer_);
   bool recalculate(false);
   for (int k = 0; k < myVars.size(); ++k)
   {
